@@ -3,14 +3,38 @@ const { Sequelize } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const { DB_USER, DB_PASSWORD, DB_HOST, DB_NAME } = process.env;
-
-const sequelize = new Sequelize(
-  `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}`,
-  {
-    logging: false, // set to console.log to see the raw SQL queries
-    native: false, // lets Sequelize know we can use pg-native for ~30% more speed
-  }
-);
+let sequelize =
+  process.env.NODE_ENV === 'production'
+    ? new Sequelize({
+        database: DB_NAME,
+        dialect: 'postgres',
+        host: DB_HOST,
+        port: 5432,
+        username: DB_USER,
+        password: DB_PASSWORD,
+        pool: {
+          max: 3,
+          min: 1,
+          idle: 10000,
+        },
+        dialectOptions: {
+          ssl: {
+            require: true,
+            // Ref.: https://github.com/brianc/node-postgres/issues/2009
+            rejectUnauthorized: false,
+          },
+          keepAlive: true,
+        },
+        ssl: true,
+      })
+    : new Sequelize(
+        `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/development`,
+        { logging: false, native: false }
+      );
+// const sequelize = new Sequelize(`postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/development`, {
+//   logging: false, // set to console.log to see the raw SQL queries
+//   native: false, // lets Sequelize know we can use pg-native for ~30% more speed
+// });
 const basename = path.basename(__filename);
 
 const modelDefiners = [];
@@ -58,12 +82,6 @@ Category.belongsToMany(Product, { through: 'Prod_Cat' });
 Strain.hasMany(Product);
 Product.belongsTo(Strain);
 
-// Product.belongsTo(Brand);
-// Brand.hasMany(Product);
-
-// Brand.belongsTo(Cellar);
-// Cellar.hasMany(Brand);
-
 Order.hasMany(OrderLine);
 OrderLine.belongsTo(Order);
 
@@ -78,12 +96,6 @@ Review.belongsTo(Product);
 
 User.hasMany(Review);
 Review.belongsTo(User);
-
-// Product.belongsToMany(Order, { through: OrderLine });
-// Order.belongsToMany(Product, { through: OrderLine });
-
-// User.hasMany(RefreshToken);
-// RefreshToken.belongsTo(User);
 
 module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
