@@ -33,6 +33,9 @@ server.use(cors({ origin: true, credentials: true }));
 
 server.use(passport.initialize()); //*Inicializamos el passport
 
+sertver.get('/', (req, res) => {
+  return res.status(200).send('WINE STORE API');
+});
 server.use('/', routes); //* import de las rutas
 
 // Error catching endware.
